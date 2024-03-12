@@ -1,0 +1,995 @@
+Program.Sub.ScreenSU.Start
+Gui.F_ACH..Create
+Gui.F_ACH..Size(4335,3150)
+Gui.F_ACH..MinX(0)
+Gui.F_ACH..MinY(0)
+Gui.F_ACH..Position(0,0)
+Gui.F_ACH..BackColor(-2147483633)
+Gui.F_ACH..MousePointer(0)
+Gui.F_ACH..MaxButton(False)
+Gui.F_ACH..Sizeable(False)
+Gui.F_ACH..Event(UnLoad,Unload)
+Gui.F_ACH..Caption("ACH Export")
+Gui.F_ACH.lbl1.Create(Label,"Customer Number",True,1935,255,0,210,270,True,0,"Arial",8,-986896,0)
+Gui.F_ACH.txtCustNum.Create(TextBox,"",True,3765,300,0,210,465,True,0,"Arial",8,-2147483643,1)
+Gui.F_ACH.txtCustNum.MaxLength(20)
+Gui.F_ACH.lbl2.Create(Label,"Customer Name",True,2025,255,0,210,870,True,0,"Arial",8,-986896,0)
+Gui.F_ACH.txtCustName.Create(TextBox,"",True,3765,300,0,210,1065,True,0,"Arial",8,-2147483643,1)
+Gui.F_ACH.txtCustName.MaxLength(30)
+Gui.F_ACH.lbl3.Create(Label,"Originator Short Name",True,1935,255,0,210,1485,True,0,"Arial",8,-986896,0)
+Gui.F_ACH.txtOrigName.Create(TextBox,"",True,3765,300,0,210,1695,True,0,"Arial",8,-2147483643,1)
+Gui.F_ACH.txtOrigName.ForeColor(0)
+Gui.F_ACH.txtOrigName.MaxLength(15)
+Gui.F_ACH.cmdOkay.Create(Button)
+Gui.F_ACH.cmdOkay.Size(855,375)
+Gui.F_ACH.cmdOkay.Position(210,2100)
+Gui.F_ACH.cmdOkay.Caption("Okay")
+Gui.F_ACH.cmdOkay.Event(Click,cmdOkay_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Variable.Global.sExport.Declare(String)
+Variable.Global.iBRecords.Declare(Long,0)
+V.Global.sBatch.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+'f.Data.DataTable.Create("EMAILS",true)
+'f.Data.DataTable.AddColumn("EMAILS","CompanyCode","string","")
+'f.Data.DataTable.AddColumn("EMAILS","UserID","string","")
+'f.Data.DataTable.AddColumn("EMAILS","VendorID","string","")
+'f.Data.DataTable.AddColumn("EMAILS","Name","string","")
+'f.Data.DataTable.AddColumn("EMAILS","Email","string","")
+'f.Data.DataTable.AddColumn("EMAILS","Attachment","string","")
+'f.Data.DataTable.AddColumn("EMAILS","Date_generated","string","")
+
+
+Gui.F_ACH.txtCustNum.Text("JOMAGNATYCOS")
+Gui.F_ACH.txtCustName.Text("TYCOS TOOL AND DIE")
+Gui.F_ACH.txtOrigName.Text("TYCOS TOOL DIE")
+Gui.F_ACH..Show
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+F.Intrinsic.Control.SetErrorHandler("Unload_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Unload_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Unload.End
+
+Program.Sub.BuildData.Start
+F.Intrinsic.Control.SetErrorHandler("BuildData_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sVendor.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sType.Declare(String)
+V.Local.sMessage.Declare(String)
+V.Local.iBound.Declare(Long)
+V.Local.sCountry.Declare(String)
+V.Local.sBankAcct.Declare(String)
+V.Local.sACHBankAcct.Declare(String)
+
+F.ODBC.Connection!con.OpenLocalRecordsetRW("rstACH","SELECT * FROM V_ACH_PAYMENT WHERE EXPORTED <> 'Y'")
+
+'create a dic for Vendor and Email
+'Web_Address table. URL_Address field has the web address field we need. Also URL_TYPE of 10 is for vendors. 
+F.Data.Dictionary.CreateFromSQL("Vendor_EmaiL","con","Select LTrim(Rtrim(VEND_ID)) As Vendor, lTRIM(RTRIM(VEND_ADDR)) AS EMAIL From V_VEND_WEB_ADDR",4)
+F.Data.Dictionary.SetDefaultReturn("Vendor_Email","") 
+
+F.Intrinsic.Control.DoUntil(V.ODBC.con!rstACH.EOF,=,True)
+	V.Local.sVendor.Set(V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID)
+	'Update ACH_Payment as exported
+	F.ODBC.con!rstACH.Set!EXPORTED("Y")
+	F.ODBC.con!rstACH.Update
+	F.Intrinsic.String.Build("SELECT V.Country,V.Address1,V.Address2,V.City,V.Code_Zip,V.State,A.External_ID FROM V_VENDOR_MASTER V LEFT JOIN V_VENDOR_ADDL A ON V.VENDOR = A.VENDOR WHERE V.VENDOR = '{0}'",V.Local.sVendor,V.Local.sSQL)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rstVend",V.Local.sSQL)
+	
+	F.Intrinsic.Control.If(V.ODBC.con!rstVend.EOF,<>,True)
+		'Set the type of UDT to be stored in.
+		F.Intrinsic.Control.If(V.ODBC.con!rstVend.FieldValTrim!Country,=,"CANADA","AND",V.ODBC.con!rstVend.FieldValTrim!External_ID,<>,"WIRE")
+			V.Local.sCountry.Set("CA")
+			V.Local.sType.Set("EFT")
+			
+			'Check the currency of the vendor
+			F.Intrinsic.String.Build("SELECT CURRENCY FROM VENDOR_CURR WHERE VENDOR = '{0}'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+			F.ODBC.Connection!con.OpenLocalRecordsetRO("rstCurrency",V.Local.sSQL)
+			
+			F.Intrinsic.Control.If(V.ODBC.con!rstCurrency.FieldValTrim!Currency,=,"CAD")
+				F.Intrinsic.String.Build("SELECT C.BANK_ACCOUNT_ENC, V.CURRENCY FROM V_CASH_ACCOUNT C JOIN V_VENDOR_CURR V ON C.EXCH_CURR = V.CURRENCY WHERE V.VENDOR = '{0}' AND C.GL_CASH_ACCT = '001020'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("SELECT C.BANK_ACCOUNT_ENC, V.CURRENCY FROM V_CASH_ACCOUNT C JOIN V_VENDOR_CURR V ON C.EXCH_CURR = V.CURRENCY WHERE V.VENDOR = '{0}' AND C.GL_CASH_ACCT = '001030'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+			F.Intrinsic.Control.EndIf
+			
+			F.ODBC.con!rstCurrency.Close
+		F.Intrinsic.Control.ElseIf(V.ODBC.con!rstVend.FieldValTrim!Country,=,"UNITED STATE","OR",V.ODBC.con!rstVend.FieldValTrim!Country,=,"USA")
+		F.Intrinsic.Control.AndIf(V.ODBC.con!rstVend.FieldValTrim!External_ID,<>,"WIRE")
+			V.Local.sCountry.Set("US")
+			V.Local.sType.Set("ACH")
+			F.Intrinsic.String.Build("SELECT C.BANK_ACCOUNT_ENC, V.CURRENCY FROM V_CASH_ACCOUNT C JOIN V_VENDOR_CURR V ON C.EXCH_CURR = V.CURRENCY WHERE V.VENDOR = '{0}' AND C.GL_CASH_ACCT = '001030'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+		F.Intrinsic.Control.Else
+			V.Local.sType.Set("WIRE")
+			F.Intrinsic.String.Build("SELECT CURRENCY FROM VENDOR_CURR WHERE VENDOR = '{0}'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+			F.ODBC.Connection!con.OpenLocalRecordsetRO("rstCurrency",V.Local.sSQL)
+			
+			'Check to make sure there's at least a record
+			F.Intrinsic.Control.If(V.ODBC.con!rstCurrency.EOF,<>,True)
+				'Build SQL query based on whether it's CAD or USD
+				F.Intrinsic.Control.If(V.ODBC.con!rstCurrency.FieldValTrim!Currency,=,"CAD")
+					V.Local.sCountry.Set("CA")
+					F.Intrinsic.String.Build("SELECT C.BANK_ACCOUNT_ENC, V.CURRENCY FROM V_CASH_ACCOUNT C JOIN V_VENDOR_CURR V ON C.EXCH_CURR = V.CURRENCY WHERE V.VENDOR = '{0}' AND C.GL_CASH_ACCT = '001020'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+				F.Intrinsic.Control.Else
+					V.Local.sCountry.Set("US")
+					F.Intrinsic.String.Build("SELECT C.BANK_ACCOUNT_ENC, V.CURRENCY FROM V_CASH_ACCOUNT C JOIN V_VENDOR_CURR V ON C.EXCH_CURR = V.CURRENCY WHERE V.VENDOR = '{0}' AND C.GL_CASH_ACCT = '001030'",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sSQL)
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("Error finding currency for Vendor {0}. Record was not added.",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,V.Local.sMessage)
+				F.Intrinsic.UI.Msgbox(V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+			
+			'Close recordset
+			F.ODBC.con!rstCurrency.Close
+		F.Intrinsic.Control.EndIf
+		
+		'Get Vendor Information
+		F.ODBC.Connection!con.OpenLocalRecordsetRO("rstAcct",V.Local.sSQL)
+		
+		F.Intrinsic.Control.If(V.ODBC.con!rstAcct.EOF,<>,True)
+			F.Global.Encryption.Decrypt(V.ODBC.con!rstAcct.FieldVal!BANK_ACCOUNT_ENC,V.Local.sBankAcct)
+			F.Global.Encryption.Decrypt(V.ODBC.con!rstACH.FieldVal!BANK_ACCOUNT_ENC,V.Local.sACHBankAcct)
+			
+			'Get Originator Bank ID
+			V.Local.sSQL.Set("Select TEXT1 from OP_HEADER Where ID = '400803' AND SEQUENCE = '0002'")
+			F.ODBC.Connection!con.OpenLocalRecordsetRO("rstOrig",V.Local.sSQL)
+			
+			F.Intrinsic.Control.If(V.ODBC.con!rstOirg.EOF,<>,True)
+				F.Data.DataTable.AddRow(V.Local.sType,"DebBankID",V.ODBC.con!rstOrig.FieldValTrim!TEXT1,"DebitBankAcct",V.Local.sBankAcct,"PayableDate",V.ODBC.con!rstACH.FieldValTrim!Check_Date,"PaymentNum",V.ODBC.con!rstACH.FieldValTrim!KEY_NUM,"TranRefNum",V.ODBC.con!rstACH.FieldValTrim!BATCH_NUM,"PayeeName",V.ODBC.con!rstACH.FieldValTrim!VENDOR_NAME,"PayeeAmount",V.ODBC.con!rstACH.FieldValTrim!CHECK_AMT,"PayeeDebBankID",V.ODBC.con!rstACH.FieldValTrim!BANK_ROUTING,"PayeeAcct",V.Local.sACHBankAcct,"CustSund",V.ODBC.con!rstACH.FieldValTrim!VENDOR_ID,"Country",V.Local.sCountry,"PayeeAddr",V.ODBC.con!rstVend.FieldValTrim!ADDRESS1,"PayeeAddr2",V.ODBC.con!rstVend.FieldValTrim!ADDRESS2,"PayeeCity",V.ODBC.con!rstVend.FieldValTrim!CITY,"PayeeZip",V.ODBC.con!rstVend.FieldValTrim!CODE_ZIP,"PayeeState",V.ODBC.con!rstVend.FieldValTrim!STATE,"Currency",V.ODBC.con!rstAcct.FieldValTrim!CURRENCY)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.UI.Msgbox("Error finding Originator Bank ID. No records added.")
+			F.Intrinsic.Control.EndIf
+			
+			F.ODBC.con!rstOrig.Close
+		F.Intrinsic.Control.Else
+			F.Intrinsic.UI.Msgbox("Unable to find Bank Account information for the Vendor.")
+		F.Intrinsic.Control.EndIf
+		
+		F.ODBC.con!rstAcct.Close
+		
+	F.Intrinsic.Control.EndIf
+	
+	F.ODBC.con!rstVend.Close
+	F.ODBC.con!rstACH.MoveNext
+F.Intrinsic.Control.Loop
+
+F.ODBC.con!rstACH.Close
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("BuildData_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.BuildData.End
+
+Program.Sub.InitializeDataTables.Start
+F.Intrinsic.Control.SetErrorHandler("InitializeDataTables_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'Create Tables
+F.Data.DataTable.Create("ACH",True)
+
+'Add Columns to ACH
+F.Data.DataTable.AddColumn("ACH","DebBankID","String","")
+F.Data.DataTable.AddColumn("ACH","DebitBankAcct","String","")
+F.Data.DataTable.AddColumn("ACH","PayableDate","string","")
+F.Data.DataTable.AddColumn("ACH","PaymentNum","string","")
+F.Data.DataTable.AddColumn("ACH","TranRefNum","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeName","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeAmount","float",0.0)
+F.Data.DataTable.AddColumn("ACH","PayeeDebBankID","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeAcct","string","")
+F.Data.DataTable.AddColumn("ACH","CustSund","string","")
+F.Data.DataTable.AddColumn("ACH","Country","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeAddr","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeAddr2","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeCity","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeZip","string","")
+F.Data.DataTable.AddColumn("ACH","PayeeState","string","")
+F.Data.DataTable.AddColumn("ACH","Currency","string","")
+
+'Create Two Other DataTables For EFT and WIRE transactions
+F.Data.Datatable.Clone("ACH","EFT",True)
+F.Data.Datatable.Clone("ACH","WIRE",True)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("InitializeDataTables_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.InitializeDataTables.End
+
+Program.Sub.cmdOkay_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdOkay_Click_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+V.Local.sTypes.Declare(String)
+V.Local.sDataView.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sDictionary.Declare(String)
+V.Local.sCurrency.Declare(String)
+V.Local.iC.Declare(Long)
+'Make sure that user has entered in mandatory data
+F.Intrinsic.Control.If(V.Screen.F_ACH!txtCustName.Text.Trim,=,"","OR",V.Screen.F_ACH!txtCustNum.Text.Trim,=,"",V.Screen.F_ACH!txtOrigName.Text.Trim,=,"")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+'Hide screen
+Gui.F_ACH..Visible(False)
+F.Intrinsic.Control.CallSub(InitializeDataTables)
+'Get all the data needed to generate the files
+F.Intrinsic.Control.CallSub(builddata)
+F.Intrinsic.Control.If(V.DataTable.EFT.RowCount,>,0)
+	'Start generating the EFT File
+	F.Intrinsic.Control.CallSub(WriteFileHeader)
+
+	'Get array of the two currencies for 
+	F.Intrinsic.String.Split("CAD*!*USD","*!*",V.Local.sTypes)
+	
+	'Loop through each type
+	F.Intrinsic.Control.For(V.Local.iC,0,V.Local.sTypes.UBound,1)
+		'Build Dataview name
+		F.Intrinsic.String.Build("EFT_{0}",V.Local.sTypes(V.Local.iC),V.Local.sDataView)
+		'Build filter
+		F.Intrinsic.String.Build("Currency = '{0}'",V.Local.sTypes(V.Local.iC),V.Local.sFilter)
+		F.Data.DataView.Create("EFT",V.Local.sDataView,22,V.Local.sFilter,"")
+		'If there are CAD records add one to the number of B records
+		F.Intrinsic.Control.If(V.DataView.EFT!EFT_[V.Local.sTypes(V.Local.iC)].RowCount,>,0)
+			F.Intrinsic.Math.Add(V.Global.iBRecords,1,V.Global.iBRecords)
+			'Write the EFT Batch Header 
+			F.Intrinsic.Control.CallSub(WriteBatchHeader,"Type",V.Local.sTypes(V.Local.iC),"FileType","EFT")
+			'Write the P records to the file
+			F.Intrinsic.Control.CallSub(writeprecord,"Type",V.Local.sTypes(V.Local.iC),"FileType","EFT")
+			'Write Batch footer
+			F.Intrinsic.Control.CallSub(writebfooter,"Type",V.Local.sTypes(V.Local.iC),"FileType","EFT")
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iC)
+	
+	'Write the file footer for EFT
+	F.Intrinsic.Control.CallSub(writefoot,"FileType","EFT")
+	'Close EFT_CAD dataview as it is no longer needed. 
+	F.Data.DataView.Close("EFT","EFT_CAD")
+	'Close EFT_USD dataview as it is no longer needed.
+	F.Data.DataView.Close("EFT","EFT_USD")
+	'Save Export File
+	F.Intrinsic.Control.CallSub(savefile,"FileType","EFT")
+F.Intrinsic.Control.EndIf
+'Close datatable
+F.Data.DataTable.Close("EFT")
+
+'Reset Global File variable
+V.Global.sExport.Set("")
+'Reset Global Batch counter
+V.Global.iBRecords.Set(0)
+
+'Check to make sure their are ACH records
+F.Intrinsic.Control.If(V.DataTable.ACH.RowCount,>,0)
+	'Start generating ACH File
+	F.Intrinsic.Control.CallSub(writefileheader)
+	'Only one type of currency so create dataview of all datatable information so that the subroutines can be reused
+	F.Data.DataView.Create("ACH","ACH_USD",22,"","")
+	'Check to make sure there are records in the dataview, there should be at this point, but good to check to make sure nothing bad happened when loading data into dataview.
+	F.Intrinsic.Control.If(V.DataView.ACH!ACH_USD.RowCount,>,0)
+		F.Intrinsic.Math.Add(V.Global.iBRecords,1,V.Global.iBRecords)
+		'Write the EFT Batch Header 
+		F.Intrinsic.Control.CallSub(WriteBatchHeader,"Type","USD","FileType","ACH")
+		'Write the P records to the file
+		F.Intrinsic.Control.CallSub(writeprecord,"Type","USD","FileType","ACH")
+		'Write Batch footer
+		F.Intrinsic.Control.CallSub(writebfooter,"Type","USD","FileType","ACH")
+	F.Intrinsic.Control.EndIf
+	
+	'Write the file footer for ACH
+	F.Intrinsic.Control.CallSub(writefoot,"FileType","ACH")	
+	'Close EFT_USD dataview as it is no longer needed.
+	F.Data.DataView.Close("ACH","ACH_USD")
+	'Save Export File
+	F.Intrinsic.Control.CallSub(savefile,"FileType","ACH")
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.Close("ACH")
+
+'Reset Global File variable
+V.Global.sExport.Set("")
+'Reset Global Batch counter
+V.Global.iBRecords.Set(0)
+
+'Begin building WIRE file if there is data
+F.Intrinsic.Control.If(V.DataTable.WIRE.RowCount,>,0)
+	F.Intrinsic.Control.CallSub(writefileheader)
+	'Create datadicitonary of Currencies
+	F.Data.Dictionary.CreateFromDataTable("Currency","WIRE","Currency","Currency",4)
+	'Load dictionary into string to loop through
+	Function.Data.Dictionary.ReturnAllPairs("Currency",V.Local.sDictionary)
+	'Check to make sure values returned, they should be since their are records
+	F.Intrinsic.Control.If(V.Local.sDictionary,<>,"***NORETURN***")
+	
+		'Keys and Values are delimited with !*!, key values and delimiter values are delimited with *!*
+		F.Intrinsic.String.Split(V.Local.sDictionary,"!*!",V.Local.sDictionary)
+		'Keys should be in first section, since our keys and values are the same we'll just loop through the keys
+		F.Intrinsic.String.Split(V.Local.sDictionary(0),"*!*",V.Local.sCurrency)
+		'Loop through all currencies
+		F.Intrinsic.Control.For(V.Local.iC,0,V.Local.sCurrency.UBound,1)
+			'Build Dataview name
+			F.Intrinsic.String.Build("WIRE_{0}",V.Local.sCurrency(V.Local.iC),V.Local.sDataView)
+			'Build filter
+			F.Intrinsic.String.Build("Currency = '{0}'",V.Local.sCurrency(V.Local.iC),V.Local.sFilter)
+			F.Data.DataView.Create("WIRE",V.Local.sDataView,22,V.Local.sFilter,"")
+			
+			'If there are CAD records add one to the number of B records
+			F.Intrinsic.Control.If(V.DataView.WIRE![V.Local.sDataView].RowCount,>,0)
+				F.Intrinsic.Math.Add(V.Global.iBRecords,1,V.Global.iBRecords)
+				'Write the EFT Batch Header 
+				F.Intrinsic.Control.CallSub(WriteBatchHeader,"Type",V.Local.sCurrency(V.Local.iC),"FileType","WIRE")
+				'Write the P records to the file
+				F.Intrinsic.Control.CallSub(writeprecord,"Type",V.Local.sCurrency(V.Local.iC),"FileType","WIRE")
+				'Write Important notes records, this is just used for Wire transfers
+				F.Intrinsic.Control.CallSub(writeirecord,"Type",V.Local.sCurrency(V.Local.iC),"FileType","WIRE")
+				'Write Batch footer
+				F.Intrinsic.Control.CallSub(writebfooter,"Type",V.Local.sCurrency(V.Local.iC),"FileType","WIRE")
+				'Close dataview as it is no longer needed. 
+				F.Data.DataView.Close("WIRE",V.Local.sDataView)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Next(V.Local.iC)
+		
+		'Write the file footer for EFT
+		F.Intrinsic.Control.CallSub(writefoot,"FileType","WIRE")
+
+		'Save Export File
+		F.Intrinsic.Control.CallSub(savefile,"FileType","WIRE")
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(unload)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdOkay_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdOkay_Click.End
+
+Program.Sub.WriteFileHeader.Start
+F.Intrinsic.Control.SetErrorHandler("WriteFileHeader_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sCustNum.Declare(String)
+V.Local.sCustName.Declare(String)
+V.Local.sOrigName.Declare(String)
+V.Local.dDate.Declare(Date)
+V.Local.sRet.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.sTime.Declare(String)
+V.Local.sSQL.Declare(String)
+
+V.Local.sCustName.Set(V.Screen.F_ACH!txtCustName.Text)
+V.Local.sCustNum.Set(V.Screen.F_ACH!txtCustNum.Text)
+V.Local.sOrigName.Set(V.Screen.F_ACH!txtOrigName.Text)
+'Get todays date and time
+V.Local.dDate.Set(V.Ambient.Date)
+F.Intrinsic.String.Format(V.Local.dDate,"YYYYMMDD",V.Local.sDate)
+V.Local.dDate.Set(V.Ambient.Time)
+F.Intrinsic.String.Format(V.Local.dDate,"HHNNSS",V.Local.sTime)
+
+'Pad Customer Number
+F.Intrinsic.String.RPad(V.Local.sCustNum," ",20,V.Local.sCustNum)
+'Pad Customer Name
+F.Intrinsic.String.RPad(V.Local.sCustName," ",30,V.Local.sCustName)
+'Get File Number
+F.ODBC.Connection!con.GetID("GCG_4103_EXP_NUM","FILE",True,V.Local.sRet)
+'Update the Table so that the next value grabbed is new each time it is run
+F.Intrinsic.String.Build("INSERT INTO GCG_4103_EXP_NUM VALUES('{0}')",V.Local.sRet,V.Local.sSQL)
+F.ODBC.Connection!con.Execute(V.Local.sSQL)
+
+'Pad iRet with trailing zeros
+F.Intrinsic.String.LPad(V.Local.sRet,"0",4,V.Local.sRet)
+
+'Build Header string
+F.Intrinsic.String.Build("A{0}{1}{2}{3}{4}PIAP2.1",V.Local.sCustNum,V.Local.sCustName,V.Local.sRet,V.Local.sDate,V.Local.sTime,V.Global.sExport)
+'Pad the Filler fields
+F.Intrinsic.String.RPad(V.Global.sExport," ",100,V.Global.sExport)
+'Add NewLine
+F.Intrinsic.String.Build("{0}{1}",V.Global.sExport,V.Ambient.NewLine,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteFileHeader_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteFileHeader.End
+
+Program.Sub.WriteBatchHeader.Start
+F.Intrinsic.Control.SetErrorHandler("WriteBatchHeader_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+'Debit Bank Identification Number
+V.Local.sDFI.Declare(String)
+'Debit Bank Account
+V.Local.sDBA.Declare(String)
+'In Currency
+V.Local.sInCurr.Declare(String)
+'Out Currency
+V.Local.sOutCurr.Declare(String)
+'Country
+V.Local.sCountry.Declare(String)
+'Local string for padding
+V.Local.sBatch.Declare(String)
+
+'There is only one Batch record per currencty, so these fields are the same in every row. Need to only get it from first record because there is at least one
+'Get data for the Batch record to be padded
+V.Local.sDFI.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](0).DebBankID!FieldVal)
+V.Local.sDBA.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](0).DebitBankAcct!FieldVal)
+V.Local.sInCurr.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](0).Currency!FieldVal)
+V.Local.sOutCurr.Set(V.Local.sInCurr)
+V.Local.sCountry.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](0).Country!FieldVal)
+'Pad the values to be properly formatted for the file.
+F.Intrinsic.String.RPad(V.Local.sDFI," ",11,V.Local.sDFI)
+F.Intrinsic.String.RPad(V.Local.sDBA," ",50,V.Local.sDBA)
+F.Intrinsic.String.RPad(V.Local.sInCurr," ",3,V.Local.sInCurr)
+F.Intrinsic.String.RPad(V.Local.sOutCurr," ",3,V.Local.sOutCurr)
+F.Intrinsic.String.RPad(V.Local.sCountry," ",2,V.Local.sCountry)
+
+'Build first portion of string up to first filler
+F.Intrinsic.Control.If(V.Args.FileType,=,"WIRE")
+	F.Intrinsic.String.Build("B04{0}{1}     04{0}{1}     {2}{3}{4}05  ",V.Local.sDFI,V.Local.sDBA,V.Local.sInCurr,V.Local.sOutCurr,V.Local.sCountry,V.Local.sBatch)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("B04{0}{1}     04{0}{1}     {2}{3}{4}04  ",V.Local.sDFI,V.Local.sDBA,V.Local.sInCurr,V.Local.sOutCurr,V.Local.sCountry,V.Local.sBatch)
+F.Intrinsic.Control.EndIf
+
+'Pad the remaining filler spaces.
+F.Intrinsic.String.RPad(V.Local.sBatch," ",200,V.Local.sBatch)
+'Add a new line for the payment records
+F.Intrinsic.String.Build("{0}{1}",V.Local.sBatch,V.Ambient.NewLine,V.Local.sBatch)
+'Add Batch record to file
+F.Intrinsic.String.Build("{0}{1}",V.Global.sExport,V.Local.sBatch,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteBatchHeader_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteBatchHeader.End 
+
+Program.Sub.WritePRecord.Start
+F.Intrinsic.Control.SetErrorHandler("WritePRecord_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+V.Local.iC.Declare(Long)
+'Payabel Date
+V.Local.dPayDate.Declare(Date)
+V.Local.sPayDate.Declare(String)
+'Payment Number
+V.Local.sPayNum.Declare(String)
+'Transaction Reference Number
+V.Local.sTRN.Declare(String)
+'Payee Name
+V.Local.sPayName.Declare(String)
+'Payee Amount
+V.Local.sPayAmt.Declare(String)
+'Payee Identification Number
+V.Local.sDFI.Declare(String)
+'Payee Account
+V.Local.sPayAcct.Declare(String)
+'Customer Sundry Information
+V.Local.sSundry.Declare(String)
+'Originator Short Name
+V.Local.sOrigShort.Declare(String)
+'Originator Long Name
+V.Local.sOrigLong.Declare(String)
+'Payment string for padding
+V.Local.sPayment.Declare(String)
+
+'8/27/2018 DRH Replacing Batch number with check number
+V.Local.sShortCheck.Declare
+
+
+'For each row in the dataview write a new line in the file
+F.Intrinsic.Control.For(V.Local.iC,0,V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type].RowCount--,1)
+	'Reset payment string to empty
+	V.Local.sPayment.Set("")
+	'Get data from dataview
+	V.Local.dPayDate.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayableDate!FieldVal)
+	V.Local.sPayNum.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PaymentNum!FieldValTrim)
+	V.Local.sTRN.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).TranRefNum!FieldValTrim)
+	V.Local.sPayName.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayeeName!FieldValTrim)
+	V.Local.sPayAmt.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayeeAmount!FieldVal)
+	V.Local.sDFI.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayeeDebBankID!FieldValTrim)
+	V.Local.sPayAcct.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayeeAcct!FieldValTrim)
+	V.Local.sSundry.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).CustSund!FieldValTrim)
+	V.Local.sOrigShort.Set(V.Screen.F_ACH!txtOrigName.Text.Trim)
+	V.Local.sOrigLong.Set(V.Screen.F_ACH!txtCustName.Text.Trim)
+	'Format date so that it is in the correct form
+	F.Intrinsic.String.Format(V.Local.dPayDate,"YYYYMMDD",V.Local.sPayDate)
+	'Format pay amount $$$$$$$$$$$$$cc
+	F.Intrinsic.String.Format(V.Local.sPayAmt,"#.00",V.Local.sPayAmt)
+	F.Intrinsic.String.Replace(V.Local.sPayAmt,".","",V.Local.sPayAmt)
+	F.Intrinsic.String.LPad(V.Local.sPayAmt,"0",15,V.Local.sPayAmt)
+	'Pad all variables
+	F.Intrinsic.String.RPad(V.Local.sPayNum," ",30,V.Local.sPayNum)
+'8/27/2018 DRH Replacing Batch number with check number
+	F.Intrinsic.String.RPad(V.Local.sPayNum," ",19,V.Local.sShortCheck)
+	'F.Intrinsic.String.RPad(V.Local.sTRN," ",19,V.Local.sTRN)
+	V.Global.sBatch.Set(V.Local.sTRN.Trim)
+	F.Intrinsic.String.RPad(V.Local.sPayName," ",35,V.Local.sPayName)
+	F.Intrinsic.String.RPad(V.Local.sDFI," ",11,V.Local.sDFI)
+	F.Intrinsic.String.RPad(V.Local.sPayAcct," ",50,V.Local.sPayAcct)
+	F.Intrinsic.String.RPad(V.Local.sSundry," ",15,V.Local.sSundry)
+	F.Intrinsic.String.RPad(V.Local.sOrigShort," ",15,V.Local.sOrigShort)
+	F.Intrinsic.String.RPad(V.Local.sOrigLong," ", 30,V.Local.sOrigLong)
+	
+	'Based on what type of file is being built we need to build a string for that particular file type ie. EFT, ACH, WIRE
+	F.Intrinsic.Control.If(V.Args.FileType,=,"EFT")
+		'Insert P record into file
+		F.Intrinsic.String.Build("PC{0}{1}{2}              {3}{4}04{5}{6}",V.Local.sPayDate,V.Local.sPayNum,V.Local.sShortCheck,V.Local.sPayName,V.Local.sPayAmt,V.Local.sDFI,V.Local.sPayAcct,V.Local.sPayment)
+		'Pad Payee IBAN 50 characters
+		F.Intrinsic.String.RPad(V.Local.sPayment," ",236,V.Local.sPayment)
+		'Continue adding data to file
+		F.Intrinsic.String.Build("{0}460{1}{2}{3}Y",V.Local.sPayment,V.Local.sOrigShort,V.Local.sOrigLong,V.Local.sSundry,V.Local.sPayment)
+	F.Intrinsic.Control.ElseIf(V.Args.FileType,=,"ACH")
+		'Insert P record into file
+		F.Intrinsic.String.Build("PC{0}{1}{2}              {3}{4}01{5}{6}",V.Local.sPayDate,V.Local.sPayNum,V.Local.sShortCheck,V.Local.sPayName,V.Local.sPayAmt,V.Local.sDFI,V.Local.sPayAcct,V.Local.sPayment)
+		'Pad Payee IBAN 50 characters
+		F.Intrinsic.String.RPad(V.Local.sPayment," ",236,V.Local.sPayment)
+		'Continue adding data to file
+		F.Intrinsic.String.Build("{0}VEN{1}{2}{3}Y CCD",V.Local.sPayment,V.Local.sOrigShort,V.Local.sOrigLong,V.Local.sSundry,V.Local.sPayment)
+	F.Intrinsic.Control.ElseIf(V.Args.FileType,=,"WIRE")
+		'Insert P record into file
+		F.Intrinsic.String.Build("PC{0}{1}{2}              {3}{4}02{5}{6}",V.Local.sPayDate,V.Local.sPayNum,V.Local.sShortCheck,V.Local.sPayName,V.Local.sPayAmt,V.Local.sDFI,V.Local.sPayAcct,V.Local.sPayment)
+		'Pad Payee IBAN 50 characters
+		F.Intrinsic.String.RPad(V.Local.sPayment," ",239,V.Local.sPayment)
+		'Continue adding data to file
+		F.Intrinsic.String.Build("{0}{1}{2}{3}Y",V.Local.sPayment,V.Local.sOrigShort,V.Local.sOrigLong,V.Local.sSundry,V.Local.sPayment)
+		'Padd for blanks
+		F.Intrinsic.String.RPad(V.Local.sPayment," ",339,V.Local.sPayment)
+		'Add remaining field for WIRE
+		F.Intrinsic.String.Build("{0}N",V.Local.sPayment,V.Local.sPayment)
+	F.Intrinsic.Control.EndIf
+	
+	'Pad the last blanks in the record
+	F.Intrinsic.String.RPad(V.Local.sPayment," ",400,V.Local.sPayment)
+	'Add new line at the end for R Record
+	F.Intrinsic.String.Build("{0}{1}",V.Local.sPayment,V.Ambient.NewLine,V.Local.sPayment)
+	'Add Payment line to file
+	F.Intrinsic.String.Build("{0}{1}",V.Global.sExport,V.Local.sPayment,V.Global.sExport)
+	
+	'Write the corresponding Remittance Record for the payment record
+	F.Intrinsic.Control.CallSub(writerrecord,"Type",V.Args.Type,"Row",V.Local.iC,"FileType",V.Args.FileType)
+	'createemail		
+	Function.Intrinsic.Control.CallSub(generateemail,"CheckNO",V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PaymentNum!FieldValTrim,"Vendor",V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).CustSund!FieldValTrim,"Name",V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Local.iC).PayeeName!FieldValTrim)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WritePRecord_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WritePRecord.End
+
+Program.Sub.WriteRRecord.Start
+F.Intrinsic.Control.SetErrorHandler("WriteRRecord_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+'Payee Name
+V.Local.sPayName.Declare(String)
+'Payee Address
+V.Local.sPayAddr1.Declare(String)
+'Payee Address 2
+V.Local.sPayAddr2.Declare(String)
+'Payee City
+V.Local.sPayCity.Declare(String)
+'Payee State
+V.Local.sPayState.Declare(String)
+'Payee Zip
+V.Local.sZip.Declare(String)
+'Payee Country
+V.Local.sCountry.Declare(String)
+'Remittance string for padding
+V.Local.sRemit.Declare(String)
+
+'Set variables
+V.Local.sPayName.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeName!FieldValTrim)
+V.Local.sPayAddr1.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeAddr!FieldValTrim)
+V.Local.sPayAddr2.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeAddr2!FieldValTrim)
+V.Local.sPayCity.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeCity!FieldValTrim)
+V.Local.sPayState.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeState!FieldValTrim)
+V.Local.sZip.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).PayeeZip!FieldValTrim)
+V.Local.sCountry.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type](V.Args.Row).Country!FieldValTrim)
+'Pad variables to the right size
+F.Intrinsic.String.RPad(V.Local.sPayName," ",35,V.Local.sPayName)
+'Rpad to 35 first to make sure that the address is only 35 characters long
+F.Intrinsic.String.RPad(V.Local.sPayAddr1," ",35,V.Local.sPayAddr1)
+'Now rpad to 50 characters since the file layout requires it.
+F.Intrinsic.String.RPad(V.Local.sPayAddr1," ",50,V.Local.sPayAddr1)
+'Do the same thing for address 2
+F.Intrinsic.String.RPad(V.Local.sPayAddr2," ",35,V.Local.sPayAddr2)
+F.Intrinsic.String.RPad(V.Local.sPayAddr2," ",50,V.Local.sPayAddr2)
+F.Intrinsic.String.RPad(V.Local.sPayCity," ",30,V.Local.sPayCity)
+F.Intrinsic.String.RPad(V.Local.sPayState," ",2,V.Local.sPayState)
+F.Intrinsic.String.RPad(V.Local.sZip," ",9,V.Local.sZip)
+F.Intrinsic.String.RPad(V.Local.sCountry," ",2,V.Local.sCountry)
+
+'Build Remittance record
+F.Intrinsic.String.Build("R{0}",V.Local.sPayName,V.Local.sRemit)
+'Rpad filler
+F.Intrinsic.String.RPad(V.Local.sRemit," ",71,V.Local.sRemit)
+F.Intrinsic.String.Build("{0}{1}{2}",V.Local.sRemit,V.Local.sPayAddr1,V.Local.sPayAddr2,V.Local.sRemit)
+'Rpad filler
+F.Intrinsic.String.RPad(V.Local.sRemit," ",371,V.Local.sRemit)
+F.Intrinsic.String.Build("{0}{1}{2}{3}{4}",V.Local.sRemit,V.Local.sPayCity,V.Local.sPayState,V.Local.sZip,V.Local.sCountry,V.Local.sRemit)
+'Rpad remaining filler
+F.Intrinsic.String.RPad(V.Local.sRemit," ",830,V.Local.sRemit)
+'Add Remittance record to file
+F.Intrinsic.String.Build("{0}{1}{2}",V.Global.sExport,V.Local.sRemit,V.Ambient.NewLine,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteRRecord_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteRRecord.End
+
+Program.Sub.WriteIRecord.Start
+F.Intrinsic.Control.SetErrorHandler("WriteIRecord_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sImportant.Declare(String)
+
+'This is a very simple record, all fields are blank except three that are always the same
+V.Local.sImportant.Set("IWWPBD")
+'Pad it with the extra spaces
+F.Intrinsic.String.RPad(V.Local.sImportant," ",648,V.Local.sImportant)
+'Add the record to the file
+F.Intrinsic.String.Build("{0}{1}{2}",V.Global.sExport,V.Local.sImportant,V.Ambient.NewLine,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteIRecord_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteIRecord.End
+
+Program.Sub.WriteBFooter.Start
+F.Intrinsic.Control.SetErrorHandler("WriteBFooter_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+'Dollar total of batch
+V.Local.fTotal.Declare(Float)
+V.Local.sTotal.Declare(String)
+'Filter for total
+V.Local.sFilter.Declare(String)
+'Total Number of P records
+V.Local.iRows.Declare(Long)
+V.Local.sRows.Declare(String)
+'Batch foot string to pad
+V.Local.sFoot.Declare(String)
+
+'Set number of records
+V.Local.iRows.Set(V.DataView.[V.Args.FileType]![V.Args.FileType]_[V.Args.Type].RowCount)
+'LPad zeros to get right size
+F.Intrinsic.String.LPad(V.Local.iRows,"0",10,V.Local.sRows)
+'Build Filter based on currency
+F.Intrinsic.String.Build("Currency='{0}'",V.Args.Type,V.Local.sFilter)
+'Get the total for the batch
+F.Data.DataTable.Compute(V.Args.FileType,"Sum(PayeeAmount)",V.Local.sFilter,V.Local.fTotal)
+'Format so that there are two decimal places in the return string
+F.Intrinsic.String.Format(V.Local.fTotal,"#.00",V.Local.sTotal)
+'Remove the decimal from the value
+F.Intrinsic.String.Replace(V.Local.sTotal,".","",V.Local.sTotal)
+'LPad total with zeros
+F.Intrinsic.String.LPad(V.Local.sTotal,"0",17,V.Local.sTotal)
+'Build record string
+F.Intrinsic.String.Build("Y000000{0}{1}",V.Local.sRows,V.Local.sTotal,V.Local.sFoot)
+'Rpad in the additional filler
+F.Intrinsic.String.RPad(V.Local.sFoot," ",100,V.Local.sFoot)
+'Add Footer to file
+F.Intrinsic.String.Build("{0}{1}{2}",V.Global.sExport,V.Local.sFoot,V.Ambient.NewLine,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteBFooter_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteBFooter.End
+
+Program.Sub.WriteFoot.Start
+F.Intrinsic.Control.SetErrorHandler("WriteFoot_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+'Dollar total of all batches
+V.Local.fTotal.Declare(Float)
+V.Local.sTotal.Declare(String)
+'Total P record rows in file
+V.Local.iPRows.Declare(Long)
+V.Local.sPRows.Declare(String)
+'Total number of Batch records in file
+V.Local.sBatchTotal.Declare(String)
+'Footer record to pad
+V.Local.sFoot.Declare(String)
+
+'compute total
+F.Data.DataTable.Compute(V.Args.FileType,"Sum(PayeeAmount)","",V.Local.fTotal)
+'Format total
+F.Intrinsic.String.Format(V.Local.fTotal,"#.00",V.Local.sTotal)
+F.Intrinsic.String.Replace(V.Local.sTotal,".","",V.Local.sTotal)
+F.Intrinsic.String.LPad(V.Local.sTotal,"0",17,V.Local.sTotal)
+'Get the number of P rows total
+V.Local.iPRows.Set(V.Datatable.[V.Args.FileType].RowCount)
+'Format rowcount
+F.Intrinsic.String.LPad(V.Local.iPRows,"0",10,V.Local.sPRows)
+'Format the number of Batches
+F.Intrinsic.String.LPad(V.Global.iBRecords,"0",6,V.Local.sBatchTotal)
+'Build Footer string
+F.Intrinsic.String.Build("Z{0}{1}{2}",V.Local.sBatchTotal,V.Local.sPRows,V.Local.sTotal,V.Local.sFoot)
+'Pad footer
+F.Intrinsic.String.RPad(V.Local.sFoot," ",100,V.Local.sFoot)
+'Add footer to File
+F.Intrinsic.String.Build("{0}{1}",V.Global.sExport,V.Local.sFoot,V.Global.sExport)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("WriteFoot_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.WriteFoot.End
+
+Program.Sub.SaveFile.Start
+F.Intrinsic.Control.SetErrorHandler("SaveFile_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sFile.Declare(String)
+V.Local.sFilePath.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.iRet.Declare(Long)
+
+'Format Date stamp
+F.Intrinsic.String.Format(V.Ambient.Now,"mmddyyHhNnSs",V.Local.sDate)
+'Build filepath
+F.Intrinsic.String.Build("{1}_Export{2}_{3}.txt",V.Caller.GlobalDir,V.Args.FileType,V.Local.sDate,V.Global.sBatch,V.Local.sFile)
+'Create label to jump back to incase they didn't mean to select cancel
+F.Intrinsic.Control.Label("Save")
+'Show save file dialog
+F.Intrinsic.UI.ShowSaveFileDialog(V.Local.sFile,"txt|*.txt",V.Local.sFilePath)
+
+'Make sure user made a selection
+F.Intrinsic.Control.If(V.Local.sFilePath,<>,"***CANCEL***")
+	F.Intrinsic.File.String2File(V.Local.sFilePath,V.Global.sExport)
+F.Intrinsic.Control.Else
+	'Check to make sure they actually don't want to export the file. The tables will have to be fixed if they don't
+	F.Intrinsic.UI.Msgbox("Are you sure you don't want to save? ACH records have already been marked as exported. Select No if you'd like to save.","Caution",4,V.Local.iRet)
+	
+	F.Intrinsic.Control.If(V.Local.iRet,=,7)
+		F.Intrinsic.Control.GoTo("Save")
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("SaveFile_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.SaveFile.End
+
+Program.Sub.GenerateEmail.Start
+F.Intrinsic.Control.SetErrorHandler("GenerateEmail_Err")
+F.Intrinsic.Control.ClearErrors
+
+'v.Local..BulkDeclareString(sError, sREt, sRecipient, sSender, sAttachment, sCheckNO, sEmail, sSql, sUserEmail )
+'v.Local..BulkDeclareString(sDate, sY, sM, sD, sTime)
+v.Local.iID.Declare(Long) 
+V.Local.sError.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sRecipient.Declare(String)
+V.Local.sSender.Declare(String)
+V.Local.sAttachment.Declare(String)
+V.Local.sCheckNo.Declare(String)
+V.Local.sEmail.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sUserEmail.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.sY.Declare(String)
+V.Local.sM.Declare(String)
+V.Local.sD.Declare(String)
+V.Local.sTime.Declare(String)
+
+'used for the email.
+v.Local.sCheckNo.Set(v.Args.CheckNo)
+v.Local.sREt.Set(v.Args.vendor)
+
+
+v.Local.sEmail.Set(v.dictionary.Vendor_Email![v.local.sREt])  
+'build recipient. 
+'Name*!*Email
+
+f.Intrinsic.Control.If(v.Local.sEmail.Trim,<>,"") 
+	
+	F.Intrinsic.String.Build("{0}*!*{1}",v.Args.Name,v.Local.sEmail,v.Local.sRecipient) 
+	'sender (email in 0, name in 1)
+	v.Local.sSender.Redim(0,1) 
+'	F.Global.Security.GetUserId(v.Caller.User,v.Caller.CompanyCode,v.Local.iID) 
+
+	F.Global.Security.GetUserEmail(v.Caller.User,v.Caller.CompanyCode,v.Local.sSender(0))	
+	f.Global.Security.GetFullName(v.Caller.User,v.Caller.CompanyCode,v.Local.sSender(1))
+	F.Intrinsic.String.Build("{0}*!*{1}",v.Local.sSender(0).Trim,v.Local.sSender(1).Trim,v.Local.sSender)
+	Function.Intrinsic.Control.CallSub(printreport,"CheckNO",v.Local.sCheckNO,"Vendor",v.Args.Vendor)
+	v.Local.sAttachment.Set(v.Args.sAttachment)
+	
+	'Get the current DateTime
+	F.Intrinsic.String.Format(V.Ambient.Date,"YYYYMMDD",V.Local.sDate)
+	f.Intrinsic.String.Left(v.Local.sDate,4,v.Local.sY)
+	f.Intrinsic.String.Mid(v.Local.sDate,5,2,v.Local.sM)
+	f.Intrinsic.String.Right(v.Local.sDate,2,v.Local.sD)
+	f.Intrinsic.String.Concat(v.Local.sM,"/",v.Local.sD,"/",v.Local.sY, v.Local.sDate)
+	v.Local.sTime.Set(V.Ambient.Time)
+	
+	'sSender(0) format: useremail*!*username
+	f.Intrinsic.String.Split(v.Local.sSender(0),"*!*",v.Local.sUserEmail)
+	 	
+	f.Intrinsic.String.Build("insert into GCG_4466_Emails(CompanyCode, UserID, UserName, UserEmail, VendorID, VendorName, VendorEmail, Attachment, DateGenerated, Time) values('{0}','{1}','{2}','{3}','{4}','{5}','{6}','{7}','{8}','{9}')",v.Caller.CompanyCode, v.Caller.User, v.Local.sSender(1), v.Local.sUserEmail, v.Args.Vendor, v.Args.Name, v.Local.sEmail, v.Local.sAttachment, v.Local.sDate, v.Local.sTime, v.Local.sSql)
+	f.ODBC.Connection!con.Execute(v.Local.sSql)
+	
+' 	This should not be sent out, so commented out, then if want to send, go to other menu item to approve
+'	f.Intrinsic.Control.If(v.Args.sAttachment.trim,<>,"") 
+'		F.Global.Messaging.QueueMessage(v.Caller.CompanyCode,v.Local.iID,"GCG_4466_ACH_Export_EMAIL.g2u","TYCOS PAYMENT REMITTANCE",v.Local.sSender(0),v.Local.sRecipient,"Please see the attached Remittance Report.",12,"","","","","","","","","",v.Local.sAttachment,True)
+'	Function.Intrinsic.Control.EndIf
+
+Function.Intrinsic.Control.Else 
+	f.Intrinsic.String.Build("Email for {0} could not be retrieved. Email will not be sent.",v.Args.Name,v.Local.sREt)
+	f.Intrinsic.UI.Msgbox(v.Local.sREt,"Notice...",64)
+Function.Intrinsic.Control.EndIf
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("GenerateEmail_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GenerateEmail.End
+
+Program.Sub.PrintReport.Start
+F.Intrinsic.Control.SetErrorHandler("PrintReport_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.sError.Declare(String)
+v.Static.iRPT.Declare(Long) 
+v.Local.sParam.Declare(String) 
+v.Local.sValues.Declare(String) 
+v.Local.sFileName.Declare(String)
+v.Local.sPath.Declare(String) 
+v.Local.sFQN.Declare(String) 
+v.Local.bEx.Declare(Boolean)
+v.Local.sSQL.Declare(String)
+Function.Intrinsic.Control.If(v.Static.iRPT,=,-1,"OR",v.Static.irpt,=,0) 	
+	F.Global.BI.GetIDFromName("GCG_4103_AP_Check_InvDtl.rpt",False,v.Static.iRPT)
+	Function.Intrinsic.Control.If(v.Static.irpt,=,-1)
+		F.Intrinsic.String.Build("{0}\Busint\Custom\GCG_4103_AP_Check_InvDtl.rpt",v.Caller.GlobalDir,v.Local.sFQN)
+		F.Intrinsic.File.Exists(v.Local.sFQN,v.Local.bEx) 
+		f.Intrinsic.Control.If(v.Local.bEx,=,True) 
+			f.Global.BI.InitializeReport("GCG_4103_ACH_Expor Remittance report.",v.Local.sFQN,v.Static.iRPT)		
+		Function.Intrinsic.Control.EndIf	
+	Function.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.If(v.Static.iRPT,<>,0)
+	F.Intrinsic.String.Build("{0}\Files",v.Caller.GlobalDir,v.Local.sPath)
+	F.Intrinsic.String.Build("{0}_{1}.pdf",v.Args.CheckNO,v.Args.Vendor,v.Local.sFileName)
+	F.Intrinsic.String.Build("{0}\{1}",v.Local.sPath,v.Local.sFileName,v.Local.sFQN)
+	'get param values. 
+	F.Intrinsic.String.Split("Terminal*!*CHECKNO*!*RPTID","*!*",v.Local.sParam) 
+	F.Intrinsic.String.Build("{0}*!*{1}*!*{2}",v.Caller.Terminal,v.Args.CheckNo,"313",v.Local.sValues) 
+	f.Intrinsic.String.Split(v.Local.sValues,"*!*",v.Local.sValues) 
+	'check for data within the AP_Checks table, since we can't call this and they neglected to include that portion in the quote... 
+	F.Intrinsic.String.Build("Select * From V_AP_CHECKS Where Trmnl = '{0}' And CHKNO = '{1}'",v.Caller.Terminal,v.Args.checkno.Trim,v.Local.sSQL)
+	f.ODBC.Connection!con.OpenLocalRecordsetRO("rstCheck",v.Local.sSQL)
+	F.Intrinsic.Control.If(v.ODBC.con!rstCheck.EOF,=,False) 
+		Function.Intrinsic.File.Exists(v.Local.sFQN,v.Local.bEx)
+		f.Intrinsic.Control.If(v.Local.bEx,=,True) 
+			f.Intrinsic.File.DeleteFile(v.Local.sFQN) 
+		Function.Intrinsic.Control.EndIf
+		F.Global.BI.SaveReport(v.Static.iRPT,1,v.Local.sParam,v.Local.sValues,v.Local.sFQN)
+	Function.Intrinsic.Control.Else 
+		f.Intrinsic.String.Build("Check Data for Check Number: {0} could not be found. Unable to generate remittance report and email.",v.Args.checkno,v.Local.sSQL)
+		f.Intrinsic.UI.Msgbox(v.Local.sSQL,"Error...",64)
+	Function.Intrinsic.Control.EndIf	
+	F.Intrinsic.File.Exists(v.Local.sFQN,v.Local.bEx) 		
+	Function.Intrinsic.Control.If(v.Local.bEx,=,True) 
+		f.Intrinsic.String.Build("{0}*!*{1}",v.Local.sFileName,v.Local.sPath,v.Local.sFQN)
+	Function.Intrinsic.Control.Else 
+		v.Local.sFQN.Set("")
+	Function.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.Else 	
+	v.Local.sFQN.Set("")
+	F.Intrinsic.UI.Msgbox("GCG_4103_AP_CHK_InvDtl.Rpt not found as an active report. Unable to generate remittance report for email.")
+Function.Intrinsic.Control.EndIf
+F.Intrinsic.Variable.AddRV("sAttachment",v.Local.sFQN)
+F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.Label("PrintReport_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_ACH_Export_EMAIL.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	Function.Intrinsic.Control.CallSub(unload)
+Function.Intrinsic.Control.EndIf
+Program.Sub.PrintReport.End
+
+Program.Sub.Comments.Start
+${$0$}$Scotia Bank Export$}$BCC$}$6/20/2016 12:24:16 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$Using Vendors > Accounts Payable > Transactions > Scotia ACH Format. 
+The program will pull information from the ACH_PAYMENT table and put it into the Scotia Bank format provided. 
+A prompt will display and ask to you enter in the Customer Number and Customer Name that Scotiabank provided. You will also be asked to enter the Originator Short Name. 
+Your Bank Account Number will be read from the CASH_ACCOUNT table based upon the currency. 
+DFI will be read from the Originating DFI Identification field in Company options.
+Program.Sub.Comments.End
