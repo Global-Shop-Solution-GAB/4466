@@ -1,0 +1,380 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create
+Gui.Form..Caption("Emails")
+Gui.Form..Size(24105,13065)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..BackColor(-2147483633)
+Gui.Form..MousePointer(0)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form.chkAll.Create(CheckBox)
+Gui.Form.chkAll.Size(1560,360)
+Gui.Form.chkAll.Position(135,11745)
+Gui.Form.chkAll.Caption("Select All")
+Gui.Form.chkAll.Event(Click,chkAll_Click)
+Gui.Form.cmdSend.Create(Button)
+Gui.Form.cmdSend.Size(975,375)
+Gui.Form.cmdSend.Position(135,12255)
+Gui.Form.cmdSend.Caption("Send")
+Gui.Form.cmdSend.Event(Click,cmdSend_Click)
+Gui.Form.gsEmail.Create(GsGridControl)
+Gui.Form.gsEmail.Size(23610,10875)
+Gui.Form.gsEmail.Position(135,690)
+Gui.Form.gsEmail.Event(RowCellClick,gsEmail_RowCellClick)
+Gui.Form.cmdConfirmRemove.Create(Button)
+Gui.Form.cmdConfirmRemove.Size(1620,375)
+Gui.Form.cmdConfirmRemove.Position(22110,180)
+Gui.Form.cmdConfirmRemove.Caption("Confirm Removing")
+Gui.Form.cmdConfirmRemove.Event(Click,cmdConfirmRemove_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+v.Local..BulkDeclareString(sSQL, sCustomer, sError)
+F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+f.Intrinsic.Control.CallSub(load)
+gui.Form..Show
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Load.Start
+F.Intrinsic.Control.SetErrorHandler("Load_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+f.Data.DataTable.CreateFromSQL("Emails_DT","con","select AutoNum, CompanyCode, UserID, UserName, UserEmail, VendorID, VendorName, VendorEmail, Attachment, DateGenerated as Date, Time from GCG_4466_Emails order by AutoNum ",true)
+f.Data.DataTable.AddColumn("Emails_DT","Select","boolean",false)
+f.Data.DataTable.AddColumn("Emails_DT","Remove","string","Remove")
+gui.Form.gsEmail.AddGridViewFromDataTable("Emails_GV","Emails_DT")
+f.Intrinsic.Control.CallSub(format_gsEmails)
+gui.Form.gsEmail.MainView("Emails_GV")
+f.Data.DataTable.Create("Remove",true)
+f.Data.DataTable.AddColumn("Remove","AutoNum","long")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Load_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Load.End
+
+Program.Sub.format_gsEmails.Start
+F.Intrinsic.Control.SetErrorHandler("format_gsEmails_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+Gui.Form.gsEmail.setColumnProperty("Emails_GV","AutoNum","Visible",False)
+Gui.Form.gsEmail.setColumnProperty("Emails_GV","CompanyCode","Width","55")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","UserID","Width","45")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","UserName","Width","100")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","UserEmail","Width","100")
+
+gui.Form.gsEmail.setColumnProperty("Emails_GV","VendorID","Width","35")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","VendorName","Width","100")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","VendorEmail","Width","100")
+
+gui.Form.gsEmail.setColumnProperty("Emails_GV","Attachment","Width","280")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","Date","Width","40")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","Time","Width","48")
+
+gui.Form.gsEmail.setColumnProperty("Emails_GV","Select","Width","30")
+gui.Form.gsEmail.setColumnProperty("Emails_GV","Remove","Width","30")
+
+Gui.Form.gsEmail.SetColumnProperty("Emails_GV","Select", "ReadOnly", False)
+Gui.Form.gsEmail.SetColumnProperty("Emails_GV","Remove", "ReadOnly", True)
+Gui.Form.gsEmail.SetColumnProperty("Emails_GV","Remove","AllowEdit",false)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("format_gsEmails_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.format_gsEmails.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("format_gsEmails_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'If there is rows to be removeed but not confirm
+f.Intrinsic.Control.CallSub(confirm_removing_emails)
+
+f.ODBC.Connection!Con.Close
+f.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("format_gsEmails_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.Confirm_Removing_Emails.Start
+F.Intrinsic.Control.SetErrorHandler("Confirm_Removing_Emails_Err")
+F.Intrinsic.Control.ClearErrors
+
+v.Local..BulkDeclareString(sRemoveList, sFlagRemove, sSQL, sError)
+v.Local.iCounter.Declare(long)
+f.Intrinsic.Control.if(v.DataTable.Remove.Rowcount,>,0)
+
+	f.Intrinsic.UI.Msgbox("Emails removing is not confirmed. Do you really want to remove emails?", "Confirm removing", 4, V.Local.sFlagRemove)
+	
+	f.Intrinsic.Control.If(v.Local.sFlagRemove,<>,7)
+		f.Intrinsic.UI.InvokeWaitDialog("Removing emails")				
+		f.Intrinsic.Control.For(v.Local.iCounter,0,v.DataTable.Remove.Rowcount--,1)
+			f.Intrinsic.Control.If(v.Local.iCounter, = , 0)
+				v.Local.sRemoveList.Set(Variable.DataTable.Remove(v.Local.iCounter).AutoNum!FieldValString)
+			f.Intrinsic.Control.Else			
+				f.Intrinsic.String.Concat(v.Local.sRemoveList,",",Variable.DataTable.Remove(v.Local.iCounter).AutoNum!FieldValString,v.Local.sRemoveList)
+			f.Intrinsic.Control.EndIf		
+		f.Intrinsic.Control.Next(v.Local.iCounter)	
+		
+		f.Intrinsic.String.Build("Delete from GCG_4466_Emails where AutoNum in ({0})",v.Local.sRemoveList,v.Local.sSQL)	
+		f.ODBC.Connection!Con.Execute(v.Local.sSQL)	
+		f.Intrinsic.UI.CloseWaitDialog
+		f.Data.DataTable.Close("Remove")
+		f.Data.DataTable.Create("Remove",true)
+		f.Data.DataTable.AddColumn("Remove","AutoNum","long")
+		
+	f.Intrinsic.Control.Endif
+
+f.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Confirm_Removing_Emails_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Confirm_Removing_Emails.End
+
+Program.Sub.cmdSend_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Confirm_Removing_Emails_Err")
+F.Intrinsic.Control.ClearErrors
+
+v.Local..BulkDeclareString(sError,sCompanyCode, sUserID, sUserEmail, sUserName, sSender,sVendorName, sVendorEmail, sRecipient, sAttachment, sSQL)
+v.Local..BulkDeclareLong(iID, iAutoNum, iCounter)
+v.Local.bSent.Declare(boolean)
+V.Local.bExists.Declare(boolean)
+V.Local.sMessage.Declare(String)
+
+f.Intrinsic.UI.InvokeWaitDialog("Sending emails")
+
+f.Intrinsic.Control.CallSub(confirm_removing_emails)
+
+'As the Emails_DT has some rows deleted, we can not loop through the indexes because there are some missing indexes, we should copy the Emails_DT to Emails_DT2 in order to loop
+Function.Data.DataView.Create("Emails_DT", "Emails_DV")
+Function.Data.DataView.ToDataTable("Emails_DT", "Emails_DV", "Emails_DT2")
+
+
+f.Intrinsic.Control.If(v.Screen.Form!chkAll.Value,=,1)
+
+	f.Intrinsic.Control.For(v.Local.iCounter,0,v.DataTable.Emails_DT2.RowCount--,1)
+		'Loop through the Emails_DT desc iCounter for deleting after emails
+		'Get Row Data
+		v.Local.sCompanyCode.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).CompanyCode!FieldValString)
+		v.Local.sUserID.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserID!FieldValString)	
+		v.Local.sUserName.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserName!FieldValString)
+		v.Local.sUserEmail.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserEmail!FieldValString)		
+		v.Local.sVendorName.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).VendorName!FieldValString)
+		v.Local.sVendorEmail.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).VendorEmail!FieldValString)	
+		v.Local.sAttachment.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).Attachment!FieldValString)
+		v.Local.iAutoNum.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).AutoNum!FieldValLong)
+		
+		'Prepare data
+		F.Global.Security.GetUserId(v.Local.sUserID,v.Local.sCompanyCode,v.Local.iID) 
+		F.Intrinsic.String.Build("{0}*!*{1}",v.Local.sUserEmail.Trim,v.Local.sUserName.Trim,v.Local.sSender)
+		F.Intrinsic.String.Build("{0}*!*{1}",v.Local.sVendorName.Trim,v.Local.sVendorEmail.Trim,v.Local.sRecipient)
+		
+		F.Intrinsic.File.Exists(V.Local.sAttachment,V.Local.bExists)
+			
+		F.Intrinsic.Control.If(V.Local.bExists)
+			F.Global.Messaging.QueueMessage(v.Local.sCompanyCode,v.Local.iID,"GCG_4466_Approve_Emails.g2u","TYCOS PAYMENT REMITTANCE",v.Local.sSender,v.Local.sRecipient,"Please see the attached Remittance Report.",12,"","","","","","","","","",v.Local.sAttachment.Trim,True)
+			f.Intrinsic.String.Build("Delete from GCG_4466_Emails where AutoNum = '{0}'",v.Local.iAutoNum,v.Local.sSQL)
+			f.ODBC.Connection!Con.Execute(v.Local.sSQL)
+			v.Local.bSent.Set(True)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Build("File does not exist: {0}",V.Local.sAttachment,V.Local.sMessage)
+			F.Intrinsic.UI.Msgbox(V.Local.sMessage)
+		F.Intrinsic.Control.EndIf
+		
+		
+	f.Intrinsic.Control.Next(v.Local.iCounter)
+f.Intrinsic.Control.Else
+	'Get the selected rows
+	
+	'Loop through the Emails_DT but only concern the selected rows descIcounter
+	'Process the row
+	
+	f.Intrinsic.Control.For(v.Local.iCounter,0,v.DataTable.Emails_DT2.RowCount--,1)
+		f.Intrinsic.Control.If(Variable.DataTable.Emails_DT2(v.Local.iCounter).Select!FieldVal,=,True)
+			
+			'Get Row Data
+			v.Local.sCompanyCode.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).CompanyCode!FieldValString)
+			v.Local.sUserID.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserID!FieldValString)	
+			v.Local.sUserName.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserName!FieldValString)
+			v.Local.sUserEmail.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).UserEmail!FieldValString)		
+			v.Local.sVendorName.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).VendorName!FieldValString)
+			v.Local.sVendorEmail.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).VendorEmail!FieldValString)	
+			v.Local.sAttachment.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).Attachment!FieldValString)
+			v.Local.iAutoNum.Set(Variable.DataTable.Emails_DT2(v.Local.iCounter).AutoNum!FieldValLong)
+			
+			'Prepare data
+			F.Global.Security.GetUserId(v.Local.sUserID,v.Local.sCompanyCode,v.Local.iID) 
+			F.Intrinsic.String.Build("{0}*!*{1}",v.Local.sUserEmail.Trim,v.Local.sUserName.Trim,v.Local.sSender)
+			F.Intrinsic.String.Build("{0}*!*{1}",v.Local.sVendorName.Trim,v.Local.sVendorEmail.Trim,v.Local.sRecipient)	
+			
+			F.Intrinsic.File.Exists(V.Local.sAttachment,V.Local.bExists)
+			
+			F.Intrinsic.Control.If(V.Local.bExists)
+				F.Global.Messaging.QueueMessage(v.Local.sCompanyCode,v.Local.iID,"GCG_4466_Approve_Emails.g2u","TYCOS PAYMENT REMITTANCE",v.Local.sSender,v.Local.sRecipient,"Please see the attached Remittance Report.",12,"","","","","","","","","",v.Local.sAttachment.Trim,True)
+			
+				f.Intrinsic.String.Build("Delete from GCG_4466_Emails where AutoNum = '{0}'",v.Local.iAutoNum,v.Local.sSQL)
+				f.ODBC.Connection!Con.Execute(v.Local.sSQL)
+				v.Local.bSent.Set(True)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("File does not exist: {0}",V.Local.sAttachment,V.Local.sMessage)
+				F.Intrinsic.UI.Msgbox(V.Local.sMessage)
+			F.Intrinsic.Control.EndIf
+		
+		f.Intrinsic.Control.EndIf
+		
+	f.Intrinsic.Control.Next(v.Local.iCounter)
+		
+f.Intrinsic.Control.EndIf
+
+f.Data.DataTable.Close("Emails_DT")
+f.Data.DataTable.Close("Emails_DT2")
+f.Data.DataTable.Close("Remove")
+
+f.Intrinsic.Control.If(v.Local.bSent,=,True)
+	f.Intrinsic.UI.Msgbox("Emails sent")
+f.Intrinsic.Control.Else
+	f.Intrinsic.UI.Msgbox("No emails sent")
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.UI.CloseWaitDialog
+
+f.Intrinsic.UI.InvokeWaitDialog("Loading")
+f.Intrinsic.Control.CallSub(load)
+f.Intrinsic.UI.CloseWaitDialog
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Confirm_Removing_Emails_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdSend_Click.End
+
+Program.Sub.chkAll_Click.Start
+Program.Sub.chkAll_Click.End
+
+Program.Sub.gsEmail_RowCellClick.Start
+F.Intrinsic.Control.SetErrorHandler("cmdSend_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+v.Local.iAutoNum.Declare(long)
+
+F.Intrinsic.Control.If(V.Args.Column,=,"Remove")	
+	v.Local.iAutoNum.Set(Variable.DataTable.Emails_DT(v.Args.RowIndex).AutoNum!FieldValString)
+	Function.Data.DataTable.DeleteRow("Emails_DT",v.Args.RowIndex)	
+	f.Data.DataTable.AddRow("Remove","AutoNum",v.Local.iAutoNum)
+	
+Function.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdSend_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.gsEmail_RowCellClick.End
+
+Program.Sub.cmdConfirmRemove_Click.Start
+F.Intrinsic.Control.SetErrorHandler("Email_Err")
+F.Intrinsic.Control.ClearErrors
+
+v.Local..BulkDeclareString(sError, sFlagRemove, sRemoveList, sSQL)
+v.Local..BulkDeclareLong(iCounter)
+'Validate delete
+f.Intrinsic.Control.If(v.DataTable.Remove.RowCount,>,0)	
+
+	f.Intrinsic.UI.Msgbox("Do you really want remove the emails?", "Confirm removing", 4, V.Local.sFlagRemove)
+	f.Intrinsic.Control.If(v.Local.sFlagRemove,<>,7)
+		f.Intrinsic.UI.InvokeWaitDialog("Removing emails")			
+		f.Intrinsic.Control.For(v.Local.iCounter,0,v.DataTable.Remove.Rowcount--,1)
+			f.Intrinsic.Control.If(v.Local.iCounter, = , 0)
+				v.Local.sRemoveList.Set(Variable.DataTable.Remove(v.Local.iCounter).AutoNum!FieldValString)
+			f.Intrinsic.Control.Else			
+				f.Intrinsic.String.Concat(v.Local.sRemoveList,",",Variable.DataTable.Remove(v.Local.iCounter).AutoNum!FieldValString,v.Local.sRemoveList)
+			f.Intrinsic.Control.EndIf		
+		f.Intrinsic.Control.Next(v.Local.iCounter)	
+		
+		f.Intrinsic.String.Build("Delete from GCG_4466_Emails where AutoNum in ({0})",v.Local.sRemoveList,v.Local.sSQL)	
+		f.ODBC.Connection!Con.Execute(v.Local.sSQL)	
+		f.Intrinsic.UI.CloseWaitDialog
+		
+		f.Data.DataTable.Close("Remove")
+		f.Data.DataTable.Create("Remove",true)
+		f.Data.DataTable.AddColumn("Remove","AutoNum","long")
+		
+	f.Intrinsic.Control.Endif
+f.Intrinsic.Control.Endif
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Email_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4466_Approve_Emails.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.cmdConfirmRemove_Click.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$4/20/2017 3:04:48 PM$}$False
+Program.Sub.Comments.End
